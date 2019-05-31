@@ -206,7 +206,7 @@ fail:
 
 static int add_endpoint_address(const char *name, size_t name_len, const char *ip,
                                 long unsigned port, UdpEndpoint::UdpMode mode,
-                                const char *filter)
+                                const char *filter, long unsigned sleep_interval)
 {
     int ret;
 
@@ -245,6 +245,8 @@ static int add_endpoint_address(const char *name, size_t name_len, const char *i
             goto fail;
         }
     }
+
+    conf->sleep_interval = sleep_interval;
 
     if (port != ULONG_MAX) {
         conf->port = port;
@@ -411,7 +413,7 @@ static int parse_argv(int argc, char *argv[])
                 return -EINVAL;
             }
 
-            add_endpoint_address(NULL, 0, ip, port, UdpEndpoint::Normal, NULL);
+            add_endpoint_address(NULL, 0, ip, port, UdpEndpoint::Normal, NULL, 0);
             free(ip);
             break;
         }
@@ -497,7 +499,7 @@ static int parse_argv(int argc, char *argv[])
                 return -EINVAL;
             }
 
-            add_endpoint_address(NULL, 0, base, number, UdpEndpoint::Eavesdropping, NULL);
+            add_endpoint_address(NULL, 0, base, number, UdpEndpoint::Eavesdropping, NULL, 0);
         } else {
             const char *bauds = number != ULONG_MAX ? base + strlen(base) + 1 : NULL;
             int ret = add_uart_endpoint(NULL, 0, base, bauds, false);
@@ -680,12 +682,14 @@ static int parse_confs(ConfFile &conf)
         unsigned long port;
         char *filter;
         bool broadcast;
+        unsigned long sleep_interval;
     };
     static const ConfFile::OptionsTable option_table_udp[] = {
-        {"address",     true,   ConfFile::parse_str_dup,    OPTIONS_TABLE_STRUCT_FIELD(option_udp, addr)},
-        {"mode",        true,   parse_mode,                 OPTIONS_TABLE_STRUCT_FIELD(option_udp, mode)},
-        {"port",        false,  ConfFile::parse_ul,         OPTIONS_TABLE_STRUCT_FIELD(option_udp, port)},
-        {"filter",      false,  ConfFile::parse_str_dup,    OPTIONS_TABLE_STRUCT_FIELD(option_udp, filter)}
+        {"address",         true,   ConfFile::parse_str_dup,    OPTIONS_TABLE_STRUCT_FIELD(option_udp, addr)},
+        {"mode",            true,   parse_mode,                 OPTIONS_TABLE_STRUCT_FIELD(option_udp, mode)},
+        {"port",            false,  ConfFile::parse_ul,         OPTIONS_TABLE_STRUCT_FIELD(option_udp, port)},
+        {"filter",          false,  ConfFile::parse_str_dup,    OPTIONS_TABLE_STRUCT_FIELD(option_udp, filter)},
+        {"SleepInterval",   false,  ConfFile::parse_ul,         OPTIONS_TABLE_STRUCT_FIELD(option_udp, sleep_interval)}
     };
 
     struct option_tcp {
@@ -731,7 +735,7 @@ static int parse_confs(ConfFile &conf)
                 ret = -EINVAL;
             } else {
                 ret = add_endpoint_address(iter.name + offset, iter.name_len - offset, opt_udp.addr,
-                                           opt_udp.port, opt_udp.mode, opt_udp.filter);
+                                           opt_udp.port, opt_udp.mode, opt_udp.filter, opt_udp.sleep_interval);
             }
         }
 
